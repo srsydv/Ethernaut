@@ -1,0 +1,8 @@
+Logic flow:-
+  -> We need to gain to Engine
+      -> We'll the address from the constent slot location
+  -> We'll want to call "initialize" to make our player the "upgrader"
+  -> We can now upgrade the implementation via "upgradeToAndCall", so lets create a selfDistruct contract
+  -> Once the selfDistruct contract created, It's time to setup the "upgradeToAndCall" to call our selfDistruct contract > then call
+
+implAddr = await web3.eth.getStorageAt(contract.address, '')
