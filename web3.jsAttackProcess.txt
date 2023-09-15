@@ -62,6 +62,9 @@ Logic flow:-
 await web3.eth.sendTransaction({from: player, to: implAddr, data: upgradeData}) 
 
 
+REF:- https://dev.to/nvn/ethernaut-hacks-level-25-motorbike-397g
+
+
 :Tada::Boom: The Engine is destroyed! The Motorbike is now useless. Motorbike cannot even be repaired now because all the upgrade logic was in the logic contract which is now destroyed.
 
 
