@@ -87,6 +87,54 @@ The vulnerability stems from allowing state changes in `receive()` without prope
 
 ---
 
+## 🪙 Level 3: Fal1out
+
+### Overview
+
+In Solidity versions before 0.7.0, a constructor was defined by giving the function the same name as the contract. In this challenge, the intended constructor is misspelled as `Fal1out` instead of `Fallout`.
+
+As a result, it is a public function that anyone can call—even after deployment—and it sets the `owner` variable to `msg.sender`. This lets us take ownership of the contract.
+
+---
+
+### 🔓 Vulnerable Code
+
+```solidity
+/* constructor */
+function Fal1out() public payable {
+    owner = msg.sender;
+    allocations[owner] = msg.value;
+}
+```
+
+Because `Fal1out` is not recognized as a constructor, it becomes an external function that can be called by anyone.
+
+---
+
+### 🛠️ Exploitation Steps
+
+1. **Deploy or create an instance of the challenge contract.**
+2. **Call the `Fal1out()` function with your wallet:**
+   ```js
+   await contract.Fal1out();
+   ```
+3. **Verify ownership:**
+   ```js
+   await contract.owner(); // should return your address
+   ```
+4. **Withdraw funds:**
+   - You are now the owner and can call `collectAllocations()` to withdraw funds.
+
+---
+
+### 📝 Key Takeaways
+
+- In Solidity <0.7.0, constructors are identified by name matching the contract name exactly (case-sensitive).
+- A typo in the constructor name turns it into a publicly callable function.
+- From Solidity 0.7.0 onward, constructors are declared with the `constructor` keyword to avoid this issue.
+
+---
+
 ## 🪙 Level 4: Coin Flip
 
 ### Vulnerable Contract & Problem
