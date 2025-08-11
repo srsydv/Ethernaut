@@ -299,6 +299,107 @@ await contract.transfer("0x0000000000000000000000000000000000000000", 21);
 
 ---
 
+## 🪙 Level 7: Delegation
+
+### 🎯 Challenge Goal
+
+Become the owner of the Delegation contract without directly calling its functions.
+
+---
+
+### 🔍 Vulnerability Explanation
+
+The Delegation contract uses a `fallback()` function that executes:
+
+```solidity
+(bool result,) = address(delegate).delegatecall(msg.data);
+```
+
+- `delegatecall` executes the code from `delegate` (the Delegate contract) in the context of Delegation's storage.
+- This means that if we trigger a function in Delegate (like `pwn()`), it will modify Delegation's `owner` variable, not Delegate's.
+- Since `pwn()` sets:
+  ```solidity
+  owner = msg.sender;
+  ```
+  Calling it via `delegatecall` will set our address as owner in Delegation.
+
+---
+
+### 🛠️ Exploit Steps
+
+1. **Craft a transaction to call `pwn()` on the Delegation contract** without directly calling it.
+   - We do this by sending the function selector of `pwn()` to the Delegation contract.
+2. **The `fallback()` function in Delegation will forward this call to Delegate** using `delegatecall`.
+3. **The code in `pwn()` will run, setting `owner` in the Delegation contract to our address.**
+
+---
+
+### 📚 Detailed Explanation
+
+If you didn't get the 2nd point, here's a brief explanation:
+
+Let's slow it down and make the `fallback()` + `delegatecall` part crystal clear, step by step, because that's the key to understanding this Ethernaut challenge.
+
+#### 1️⃣ What `fallback()` does in Solidity
+
+The `fallback()` function is automatically triggered when:
+- You send a transaction to a contract that doesn't match any existing function.
+- Or you send raw data that doesn't match any function signature.
+
+**Example:**
+```solidity
+function fallback() external payable {
+    // runs if no other function matches
+}
+```
+
+So if we call Delegation with `pwn()` data, but Delegation has no function named `pwn`, `fallback()` will execute.
+
+#### 2️⃣ What `delegatecall` does
+
+`delegatecall` says:
+> "Hey otherContract, run this code, but use my storage variables."
+
+In this challenge:
+```solidity
+(bool result,) = address(delegate).delegatecall(msg.data);
+```
+
+- `delegate` is the address of the Delegate contract.
+- `msg.data` contains the raw bytes from our transaction — in this case, the function selector for `pwn()`.
+- `delegatecall` runs `pwn()` inside Delegation's storage.
+
+#### 3️⃣ Why this overwrites `Delegation.owner`
+
+Delegate has:
+```solidity
+function pwn() public {
+    owner = msg.sender;
+}
+```
+
+When run normally, it changes Delegate's `owner`. But here:
+- The code runs in Delegation's storage space.
+- So `owner` in Delegation is set to `msg.sender` (the attacker).
+
+#### 4️⃣ Visualizing it
+
+Imagine:
+- **Delegation** = the house
+- **Delegate** = a toolbox in another house
+- **delegatecall** = "Borrow the toolbox, but do the work in my house."
+
+You send the `pwn()` instructions → Delegation forwards them to Delegate's toolbox → toolbox says "Set owner to you" → it does it in Delegation's house.
+
+#### 5️⃣ Step-by-step of the exploit
+
+1. We send a transaction to Delegation with `data = functionSelector(pwn())`.
+2. Delegation doesn't have a `pwn()` function → `fallback()` is triggered.
+3. `fallback()` runs `delegate.delegatecall(msg.data)` → sends our `pwn()` call to Delegate.
+4. `pwn()` executes but modifies Delegation's `owner` to our address.
+5. **Now we're the owner.**
+
+---
 
 
 
