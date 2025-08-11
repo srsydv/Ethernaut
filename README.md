@@ -332,6 +332,8 @@ The Delegation contract uses a `fallback()` function that executes:
 2. **The `fallback()` function in Delegation will forward this call to Delegate** using `delegatecall`.
 3. **The code in `pwn()` will run, setting `owner` in the Delegation contract to our address.**
 
+4. **Important:** Call from your EOA (not via a contract). If you trigger `pwn()` through an attacking contract, that contract becomes the owner. Use Remix or a console to send the `pwn()` selector directly from your wallet.
+
 ---
 
 ### 📚 Detailed Explanation
@@ -348,64 +350,11 @@ The `fallback()` function is automatically triggered when:
 
 **Example:**
 ```solidity
-function fallback() external payable {
+fallback() external payable {
     // runs if no other function matches
 }
 ```
 
 So if we call Delegation with `pwn()` data, but Delegation has no function named `pwn`, `fallback()` will execute.
 
-#### 2️⃣ What `delegatecall` does
-
-`delegatecall` says:
-> "Hey otherContract, run this code, but use my storage variables."
-
-In this challenge:
-```solidity
-(bool result,) = address(delegate).delegatecall(msg.data);
-```
-
-- `delegate` is the address of the Delegate contract.
-- `msg.data` contains the raw bytes from our transaction — in this case, the function selector for `pwn()`.
-- `delegatecall` runs `pwn()` inside Delegation's storage.
-
-#### 3️⃣ Why this overwrites `Delegation.owner`
-
-Delegate has:
-```solidity
-function pwn() public {
-    owner = msg.sender;
-}
-```
-
-When run normally, it changes Delegate's `owner`. But here:
-- The code runs in Delegation's storage space.
-- So `owner` in Delegation is set to `msg.sender` (the attacker).
-
-#### 4️⃣ Visualizing it
-
-Imagine:
-- **Delegation** = the house
-- **Delegate** = a toolbox in another house
-- **delegatecall** = "Borrow the toolbox, but do the work in my house."
-
-You send the `pwn()` instructions → Delegation forwards them to Delegate's toolbox → toolbox says "Set owner to you" → it does it in Delegation's house.
-
-#### 5️⃣ Step-by-step of the exploit
-
-1. We send a transaction to Delegation with `data = functionSelector(pwn())`.
-2. Delegation doesn't have a `pwn()` function → `fallback()` is triggered.
-3. `fallback()` runs `delegate.delegatecall(msg.data)` → sends our `pwn()` call to Delegate.
-4. `pwn()` executes but modifies Delegation's `owner` to our address.
-5. **Now we're the owner.**
-
----
-
-
-
-
-
-
-
-
-
+#### 2️⃣ What `
