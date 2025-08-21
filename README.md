@@ -4,7 +4,8 @@
 > 
 > This repo contains solutions and explanations for Ethernaut levels. Each branch corresponds to a different level.
 
-## 🪙 Level 2: Fallback
+<details>
+<summary><strong>🪙 Level 2: Fallback</strong></summary>
 
 ### Overview
 
@@ -87,7 +88,10 @@ The vulnerability stems from allowing state changes in `receive()` without prope
 
 ---
 
-## 🪙 Level 3: Fal1out
+</details>
+
+<details>
+<summary><strong>🪙 Level 3: Fal1out</strong></summary>
 
 ### Overview
 
@@ -135,7 +139,10 @@ Because `Fal1out` is not recognized as a constructor, it becomes an external fun
 
 ---
 
-## 🪙 Level 4: Coin Flip
+</details>
+
+<details>
+<summary><strong>🪙 Level 4: Coin Flip</strong></summary>
 
 ### Vulnerable Contract & Problem
 
@@ -179,7 +186,10 @@ uint256 coinFlip = uint256(blockhash(block.number - 1)) / FACTOR;
 
 ---
 
-## 🪙 Level 5: Telephone
+</details>
+
+<details>
+<summary><strong>🪙 Level 5: Telephone</strong></summary>
 
 ### 🎯 Objective
 
@@ -240,7 +250,10 @@ Deploy an attacker contract that:
 
 ---
 
-## 🪙 Level 6: Token
+</details>
+
+<details>
+<summary><strong>🪙 Level 6: Token</strong></summary>
 
 ### 🎯 Objective
 
@@ -299,7 +312,10 @@ await contract.transfer("0x0000000000000000000000000000000000000000", 21);
 
 ---
 
-## 🪙 Level 7: Delegation
+</details>
+
+<details>
+<summary><strong>🪙 Level 7: Delegation</strong></summary>
 
 ### 🎯 Challenge Goal
 
@@ -357,7 +373,10 @@ fallback() external payable {
 
 So if we call Delegation with `pwn()` data, but Delegation has no function named `pwn`, `fallback()` will execute.
 
-## 🪙 Level 8: Vault
+</details>
+
+<details>
+<summary><strong>🪙 Level 8: Vault</strong></summary>
 
 ### Overview
 
@@ -493,7 +512,10 @@ if (!locked) {
 - **Access Control:** Proper ways to restrict functionality
 - **Data Privacy:** Strategies for handling sensitive information on public blockchains
 
-## 🪙 Level 9: King
+</details>
+
+<details>
+<summary><strong>🪙 Level 9: King</strong></summary>
 
 ### Overview
 
@@ -666,7 +688,10 @@ await contract._king(); // => kingAttack address
 - **Checks-Effects-Interactions**
 - **Denial-of-Service via unexpected revert**
 
-## 🪙 Level 10: Elevator
+</details>
+
+<details>
+<summary><strong>🪙 Level 10: Elevator</strong></summary>
 
 ### Overview
 
@@ -808,3 +833,5 @@ console.log("top:", await elevator.top()); // true
 - Callback-based design and trust boundaries
 - Determinism (`view`/`pure`) in external interfaces
 - Cross-contract control flow and reentrancy-like logic pitfalls
+
+</details>
